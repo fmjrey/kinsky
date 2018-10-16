@@ -420,17 +420,17 @@
         (.seek consumer (->topic-partition topic-partition) offset))
     (position! [this topic-partition]
       (.position consumer (->topic-partition topic-partition)))
-     (subscription [this]
-       (.subscription consumer))
+    (subscription [this]
+      (.subscription consumer))
     GenericDriver
     (close! [this]
       (.close consumer))
-     MetadataDriver
-     (partitions-for [this topic]
-       (mapv partition-info->data (.partitionsFor consumer topic)))
-     clojure.lang.IDeref
-     (deref [this]
-       consumer))))
+    MetadataDriver
+    (partitions-for [this topic]
+      (mapv partition-info->data (.partitionsFor consumer topic)))
+    clojure.lang.IDeref
+    (deref [this]
+      consumer))))
 
 (defn safe-poll!
   "Implementation of poll which disregards wake-up exceptions"
