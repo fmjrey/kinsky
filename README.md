@@ -29,6 +29,8 @@ Kinsky provides the following:
 
 ### 0.1.23
 
+- Async producer: return [in out] vector, takes :duplex? config option
+  and records with an optional :response channel
 - Producer driver: send! now accepts an optional callback argument
 - Fixed ConcurrentModificationException when async consumer created with topic
 - Upgraded dependencies: kafka-clients at 2.0.0 and cheshire at 5.8.1
