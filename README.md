@@ -8,7 +8,7 @@ for [Apache Kafka](http://kafka.apache.org) in Clojure.
 
 Kinsky provides the following:
 
-- Kakfa 0.10.0.x compatibility
+- Kakfa 0.10+ compatibility
 - Adequate data representation of Kafka types.
 - Default serializer and deserializer implementations such as
   **JSON**, **EDN** and a **keyword** serializer for keys.
@@ -30,6 +30,7 @@ Kinsky provides the following:
 ### 0.1.23
 
 - Fixed ConcurrentModificationException when async consumer created with topic
+- Upgraded dependencies: kafka-clients at 2.0.0 and cheshire at 5.8.1
 - Minor typo and code refactoring
 
 ### 0.1.22

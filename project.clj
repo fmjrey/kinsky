@@ -9,8 +9,8 @@
           :metadata   {:doc/format :markdown}}
   :dependencies [[org.clojure/clojure            "1.9.0"]
                  [org.clojure/core.async         "0.4.474"]
-                 [org.apache.kafka/kafka-clients "1.1.0"]
-                 [cheshire                       "5.8.0"]]
+                 [org.apache.kafka/kafka-clients "2.0.0"]
+                 [cheshire                       "5.8.1"]]
   :test-selectors {:default     (complement :integration)
                    :integration :integration
                    :all         (constantly true)}
