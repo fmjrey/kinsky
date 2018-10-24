@@ -12,8 +12,10 @@
                                               ConsumerRecords
                                               KafkaConsumer
                                               OffsetAndMetadata)
-           (org.apache.kafka.clients.producer KafkaProducer
-                                              ProducerRecord)
+           (org.apache.kafka.clients.producer Callback
+                                              KafkaProducer
+                                              ProducerRecord
+                                              RecordMetadata)
            (org.apache.kafka.common Node
                                     PartitionInfo
                                     TopicPartition)
@@ -128,6 +130,12 @@
      When using the single arity version, a map
      with the following possible keys is expected:
      `:key`, `:topic`, `:partition`, `:headers`, `:timestamp` and `:value`.
+     ")
+  (send-cb!       [this record cb] [this topic k v cb] [this topic k v headers cb]
+    "Produce a record on a topic with a callback function of 2 arguments:
+     - a producer record map as per rm->data,
+     - an exception thrown during the processing of a record.
+     One of the two arguments will be nil depending on the send result.
      ")
   (flush!         [this]
     "Ensure that produced messages are flushed.")
@@ -421,8 +429,8 @@
     :else (throw (ex-info "topics argument is invalid" {:topics topics}))))
 
 (defn consumer->driver
-  "Given a consumer-driver and an optional callback to callback
-   to call when stopping, yield a consumer driver.
+  "Given a KafkaConsumer and an optional callback to call when stopping,
+   yield a consumer driver.
 
    The consumer driver implements the following protocols:
 
@@ -516,8 +524,9 @@
   (map ->header headers))
 
 (defn ->record
-  "Build a producer record from a clojure map. Leave ProducerRecord instances
-   untouched."
+  "Build a ProducerRecord from a clojure map.
+   Leave ProducerRecord instances untouched."
+  ^ProducerRecord
   [payload]
   (if (instance? ProducerRecord payload)
     payload
@@ -534,6 +543,34 @@
                        (when timestamp (long timestamp))
                        key value
                        (->headers headers)))))
+
+(defn rm->data
+  "Yield a clojure representation of a producer RecordMetadata.
+  The map returned is in the form:
+  {:topic     \"topic-name\"
+   :partition 0 ;; nil if unknown
+   :offset    1234567890
+   :timestamp 9876543210}"
+  [^RecordMetadata rm]
+  {:topic     (.topic rm)
+   :partition (let [partition (.partition rm)]
+                (when (not= partition RecordMetadata/UNKNOWN_PARTITION)
+                  partition))
+   :offset    (.offset rm)
+   :timestamp (.timestamp rm)})
+
+(defn ->callback
+  "Return a producer Callback instance given a function taking 2 arguments,
+    - a producer record map as per rm->data,
+    - an exception thrown during the processing of a record.
+   One of the two argument will be nil depending on the send result."
+  ^Callback
+  [f]
+  (when f
+    (reify
+      Callback
+      (onCompletion [_ record-metadata exception]
+        (f (some-> record-metadata rm->data) exception)))))
 
 (defn producer->driver
   "Yield a driver from a Kafka Producer.
@@ -561,6 +598,16 @@
     (send! [this topic k v headers]
       "Defaults partition and timestamp to 0, if you need to set either, use the single arity version"
       (.send producer (->record {:key k :value v :topic topic :headers headers :partition 0 :timestamp 11})))
+    (send-cb! [this record cb]
+      (.send producer (->record record) (->callback cb)))
+    (send-cb! [this topic k v cb]
+      (.send producer
+             (->record {:key k :value v :topic topic})
+             (->callback cb)))
+    (send-cb! [this topic k v headers cb]
+      (.send producer
+             (->record {:key k :value v :topic topic :headers headers})
+             (->callback cb)))
     (flush! [this]
       (.flush producer))
     (init-transactions! [this]

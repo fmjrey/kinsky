@@ -50,6 +50,7 @@ Thanks a lot to these awesome contributors
 
 ### 0.1.25
 
+- Producer driver: new send-cb! function which takes a callback
 - Minor typo and code refactoring
 
 ### 0.1.24
