@@ -51,6 +51,8 @@ Thanks a lot to these awesome contributors
 ### 0.1.25
 
 - Producer driver: new send-cb! function which takes a callback
+- Async producer: return [in out] vector, takes :duplex? config option
+  and records with an optional :response channel
 - Minor typo and code refactoring
 
 ### 0.1.24
