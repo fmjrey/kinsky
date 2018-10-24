@@ -12,8 +12,10 @@
            org.apache.kafka.clients.consumer.ConsumerRecords
            org.apache.kafka.clients.consumer.KafkaConsumer
            org.apache.kafka.clients.consumer.OffsetAndMetadata
+           org.apache.kafka.clients.producer.Callback
            org.apache.kafka.clients.producer.KafkaProducer
            org.apache.kafka.clients.producer.ProducerRecord
+           org.apache.kafka.clients.producer.RecordMetadata
            org.apache.kafka.common.Node
            org.apache.kafka.common.PartitionInfo
            org.apache.kafka.common.TopicPartition
@@ -113,11 +115,14 @@
 
 (defprotocol ProducerDriver
   "Driver interface for producers"
-  (send!          [this record] [this topic k v]
+  (send!          [this record] [this record cb] [this topic k v] [this topic k v cb]
     "Produce a record on a topic.
-     When using the single arity version, a map
-     with the following possible keys is expected:
-     `:key`, `:topic`, `:partition`, and `:value`.
+     The record argument must be a map with the following possible keys:
+     `:topic`, `:key`, `:value`, and `:partition`.
+     The optional cb argument is a callback function of 2 arguments:
+      - a producer record map as per rm->data,
+      - an exception thrown during the processing of a record.
+     One of the two arguments will be nil depending on the send result.
      ")
   (flush!         [this]
     "Ensure that produced messages are flushed."))
@@ -366,8 +371,8 @@
     :else (throw (ex-info "topics argument is invalid" {:topics topics}))))
 
 (defn consumer->driver
-  "Given a consumer-driver and an optional callback to callback
-   to call when stopping, yield a consumer driver.
+  "Given a KafkaConsumer and an optional callback to call when stopping,
+   yield a consumer driver.
 
    The consumer driver implements the following protocols:
 
@@ -433,26 +438,61 @@
     (poll! consumer timeout)
     (catch WakeupException _)))
 
-(defn ->record
-  "Build a producer record from a clojure map. Leave ProducerRecord instances
-   untouched."
-  [payload]
-  (if (instance? ProducerRecord payload)
-    payload
-    (let [{:keys [partition key value]} payload
-          topic                         (some-> payload :topic name)]
-      (cond
-        (nil? topic)
-        (throw (ex-info "Need a topic to send to" {:payload payload}))
+(defn rm->data
+  "Yield a clojure representation of a producer RecordMetadata.
+  The map returned is in the form:
+  {:topic     \"topic-name\"
+   :partition 0 ;; nil if unknown
+   :offset    1234567890
+   :timestamp 9876543210}"
+  [^RecordMetadata rm]
+  {:topic     (.topic rm)
+   :partition (let [partition (.partition rm)]
+                (when (not= partition RecordMetadata/UNKNOWN_PARTITION)
+                  partition))
+   :offset    (.offset rm)
+   :timestamp (.timestamp rm)})
 
-        (and key partition)
-        (ProducerRecord. (str topic) (int partition) key value)
+(defn ^ProducerRecord ->record
+  "Build a ProducerRecord from a clojure map, or given topic, key, value.
+   Return ProducerRecord instances untouched."
+  ([payload]
+   (if (instance? ProducerRecord payload)
+     payload
+     (let [{:keys [partition key value]} payload
+           topic                         (some-> payload :topic name)]
+       (cond
+         (nil? topic)
+         (throw (ex-info "Need a topic to send to" {:payload payload}))
 
-        key
-        (ProducerRecord. (str topic) key value)
+         (and key partition)
+         (ProducerRecord. (str topic) (int partition) key value)
 
-        :else
-        (ProducerRecord. (str topic) value)))))
+         :else
+         (->record topic key value)))))
+  ([topic k v]
+   (cond
+     (nil? topic)
+     (throw (ex-info "Need a topic to send to" {:topic topic :key k :value v}))
+
+     key
+     (ProducerRecord. (str topic) k v)
+
+     :else
+     (ProducerRecord. (str topic) v))))
+
+
+(defn ^Callback ->callback
+  "Return a producer Callback instance given a function taking 2 arguments,
+    - a producer record map as per rm->data,
+    - an exception thrown during the processing of a record.
+   One of the two argument will be nil depending on the send result."
+  [f]
+  (when f
+    (reify
+      Callback
+      (onCompletion [_ record-metadata exception]
+        (f (some-> record-metadata rm->data) exception)))))
 
 (defn producer->driver
   "Yield a driver from a Kafka Producer.
@@ -474,9 +514,13 @@
         (.close producer (long timeout) TimeUnit/MILLISECONDS)))
     ProducerDriver
     (send! [this record]
-      (.send producer (->record record)))
+      (send! this record nil))
+    (send! [this record cb]
+      (.send producer (->record record) (->callback cb)))
     (send! [this topic k v]
-      (.send producer (->record {:key k :value v :topic topic})))
+      (send! this topic k v nil))
+    (send! [this topic k v cb]
+      (.send producer (->record topic k v) (->callback cb)))
     (flush! [this]
       (.flush producer))
     MetadataDriver
