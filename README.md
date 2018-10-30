@@ -48,6 +48,10 @@ Thanks a lot to these awesome contributors
 
 ## Changelog
 
+### 0.1.25
+
+- Minor typo and code refactoring
+
 ### 0.1.24
 
 - Add support for producer transaction

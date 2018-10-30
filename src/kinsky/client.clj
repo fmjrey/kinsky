@@ -89,9 +89,9 @@
     "Subscribe to a topic or list of topics.
      The topics argument can be:
 
-     - A simple string when subscribing to a single topic
+     - A simple string or keyword when subscribing to a single topic
      - A regex pattern to subscribe to matching topics
-     - A sequence of strings
+     - A collection of strings or keywords
 
      The optional listener argument is either a callback
      function or an implementation of
@@ -402,9 +402,17 @@
      :by-partition (group-by (juxt :topic :partition) edc)}))
 
 (defn ->topics
-  "Yield a valid object for subscription"
+  "Yield a valid topic object for subscription given a string, keyword,
+  regex pattern or collection of strings or keywords."
   ^Collection
   [topics]
+  (assert (or (string? topics)
+              (keyword? topics)
+              (instance? Pattern topics)
+              (and (instance? Collection topics)
+                   (every? (some-fn string? keyword?) topics)))
+          (str "topics argument must be a string, keyword, regex pattern or "
+               "collection of strings or keywords, received " topics))
   (cond
     (keyword? topics)             [(name topics)]
     (string? topics)              [topics]
@@ -451,22 +459,8 @@
        (.resume consumer
                 (map ->topic-partition topic-partitions)))
      (subscribe! [this topics]
-       (assert (or (string? topics)
-                   (keyword? topics)
-                   (instance? Pattern topics)
-                   (and (instance? Collection topics)
-                        (every? (some-fn string? keyword?) topics)))
-               (str "topic argument must be a string, keyword, regex pattern or "
-                    "collection of strings or keywords."))
        (.subscribe consumer (->topics topics)))
      (subscribe! [this topics listener]
-       (assert (or (string? topics)
-                   (keyword? topics)
-                   (instance? Pattern topics)
-                   (and (instance? Collection topics)
-                        (every? (some-fn string? keyword?) topics)))
-               (str "topic argument must be a string, keyword, regex pattern or "
-                    "collection of strings or keywords."))
        (.subscribe consumer (->topics topics) (rebalance-listener listener)))
      (unsubscribe! [this]
        (.unsubscribe consumer))
