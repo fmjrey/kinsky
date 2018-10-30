@@ -55,6 +55,13 @@
   [e]
   (instance? Exception e))
 
+(defn ex-response
+  "Return a response containing the given exception."
+  [e]
+  {:type :exception :exception e})
+
+(def eof-response {:type :eof})
+
 (defn make-consumer
   "Build a consumer, with or without deserializers"
   [config kd vd]
@@ -128,7 +135,7 @@
 
 (defn close-poller
   [ctl out driver]
-  (a/put! out {:type :eof})
+  (a/put! out eof-response)
   (a/close! ctl)
   (client/close! driver)
   (a/close! out))
@@ -147,7 +154,7 @@
       ;; Cannot happen unless there is a bug, so don't hide it
       (throw e))
     (catch Exception e
-      (a/put! out {:type :exception :exception e})
+      (a/put! out (ex-response e))
       false)))
 
 (defn poller-thread
