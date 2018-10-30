@@ -169,13 +169,13 @@
     (a/tap mult c1)
     (a/tap mult c2)
     (a/pipe recs out)
-    (future
+    (a/thread
       (.setName (Thread/currentThread) "kafka-control-poller")
       (loop []
         (when-let [cr (a/<!! c2)]
           (client/wake-up! driver)
           (recur))))
-    (future
+    (a/thread
       (.setName (Thread/currentThread) "kafka-consumer-poller")
       (try
         (loop [recur? true]
