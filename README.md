@@ -53,7 +53,7 @@ Thanks a lot to these awesome contributors
 - Producer driver: new send-cb! function which takes a callback
 - Async producer: return [in out] vector, takes :duplex? config option
   and records with an optional :response channel
-- Consumer: added seek-beginning! and seek-end! on driver
+- Consumer: added seek-beginning! and seek-end! on driver and :seek op on async
 - Minor typo and code refactoring
 
 ### 0.1.24
