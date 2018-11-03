@@ -107,10 +107,18 @@
   (wake-up!        [this]
     "Safely wake-up a consumer which may be blocking during polling.")
   (seek!           [this] [this topic-partition offset]
-    "Overrides the fetch offsets that the consumer will use on the next poll")
-  (position!      [this] [this topic-partition]
+    "Overrides the fetch offsets the consumer will use on the next poll.
+     topic-partition must be a map with `:topic` and `:partition` entries.
+     and offset must be a long value.")
+  (seek-beginning! [this] [this topic-partitions]
+    "Overrides the fetch offsets the consumer will use on the next poll.
+     topic-partitions must be a seq of maps with `:topic` and `:partition`.")
+  (seek-end!       [this] [this topic-partitions]
+    "Overrides the fetch offsets the consumer will use on the next poll.
+     topic-partitions must be a seq of maps with `:topic` and `:partition`.")
+  (position!       [this] [this topic-partition]
     "Get the offset of the next record that will be fetched (if a record with that offset exists).")
-  (subscription   [this]
+  (subscription    [this]
     "Currently assigned topics"))
 
 (defprotocol ProducerDriver
@@ -415,21 +423,25 @@
                     (->> topic-offsets
                          (map (juxt ->topic-partition ->offset-metadata))
                          (reduce merge {}))))
-    (seek! [this topic-partition offset]
-        (.seek consumer (->topic-partition topic-partition) offset))
-    (position! [this topic-partition]
-      (.position consumer (->topic-partition topic-partition)))
-    (subscription [this]
-      (.subscription consumer))
-    GenericDriver
-    (close! [this]
-      (.close consumer))
-    MetadataDriver
-    (partitions-for [this topic]
-      (mapv partition-info->data (.partitionsFor consumer topic)))
-    clojure.lang.IDeref
-    (deref [this]
-      consumer))))
+     (seek! [this topic-partition offset]
+       (.seek consumer (->topic-partition topic-partition) offset))
+     (seek-beginning! [this topic-partitions]
+       (.seekToBeginning consumer (map ->topic-partition topic-partitions)))
+     (seek-end! [this topic-partitions]
+       (.seekToEnd consumer (map ->topic-partition topic-partitions)))
+     (position! [this topic-partition]
+       (.position consumer (->topic-partition topic-partition)))
+     (subscription [this]
+       (.subscription consumer))
+     GenericDriver
+     (close! [this]
+       (.close consumer))
+     MetadataDriver
+     (partitions-for [this topic]
+       (mapv partition-info->data (.partitionsFor consumer topic)))
+     clojure.lang.IDeref
+     (deref [this]
+       consumer))))
 
 (defn safe-poll!
   "Implementation of poll which disregards wake-up exceptions"
