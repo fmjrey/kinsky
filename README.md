@@ -54,6 +54,7 @@ Thanks a lot to these awesome contributors
 - Async producer: return [in out] vector, takes :duplex? config option
   and records with an optional :response channel
 - Consumer: added seek-beginning! and seek-end! on driver and :seek op on async
+- Async: handle a closed control channel as a :close operation
 - Minor typo and code refactoring
 
 ### 0.1.24
