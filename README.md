@@ -32,8 +32,10 @@ Kinsky provides the following:
 - Async producer: return [in out] vector, takes :duplex? config option
   and records with an optional :response channel
 - Producer driver: send! now accepts an optional callback argument
+- Consumer: added seek-beginning! and seek-end! on driver and :seek op on async
 - Fixed ConcurrentModificationException when async consumer created with topic
-- Upgraded dependencies: kafka-clients at 2.0.0 and cheshire at 5.8.1
+- Upgraded dependencies: kafka-clients at 2.0.1 and cheshire at 5.8.1
+- Async: handle a closed control channel as a :close operation
 - Minor typo and code refactoring
 
 ### 0.1.22
