@@ -8,6 +8,14 @@
            [java.util ConcurrentModificationException]))
 
 (defn duplex
+  "Create a single duplex channel from 2 `up` and `down` channels.
+  Writing to the duplex channel writes to the `up` channel.
+  Reading from the duplex channel reads from the `down` channel.
+  An additional vector can be passed to back the implementation
+  of the Indexed interface and its`nth` method.
+  Alternatively one can use `get` with the key `:in`, `:up`, or `:sink`
+  to get the `up` channel, and `:out`, `:down`, or `:source` to get the
+  `down` channel."
   ([up down] (duplex up down [up down]))
   ([up down indexed]
    (reify
@@ -29,14 +37,16 @@
        (nth indexed idx))
      (nth [_ idx not-found]
        (nth indexed idx not-found))
+     clojure.lang.Counted
+     (count [_] 2)
      clojure.lang.ILookup
      (valAt [this key]
        (.valAt this key nil))
      (valAt [_ key not-found]
        (case key
-         [:sink :up]     up
-         [:source :down] down
-                         not-found)))))
+         (:sink :up :in) up
+         (:source :down :out) down
+         not-found)))))
 
 (def default-input-buffer
   "Default amount of messages buffered on control channels."
